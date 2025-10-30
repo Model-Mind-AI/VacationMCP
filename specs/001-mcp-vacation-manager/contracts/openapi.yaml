@@ -1,0 +1,112 @@
+openapi: 3.0.3
+info:
+  title: MCP Vacation Manager API
+  version: 1.0.0
+paths:
+  /health:
+    get:
+      summary: Health check
+      responses:
+        '200':
+          description: OK
+  /balance:
+    get:
+      summary: Get current employee vacation balance (hours)
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: header
+          name: X-Employee-Id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Balance
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BalanceResponse'
+        '401': { description: Unauthorized }
+        '400': { description: Bad Request }
+  /vacation-requests:
+    post:
+      summary: Create a vacation request (full-day, weekdays-only)
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRequest'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RequestResponse'
+        '400': { description: Validation error }
+        '401': { description: Unauthorized }
+    get:
+      summary: List employee vacation requests
+      security:
+        - ApiKeyAuth: []
+      parameters:
+        - in: header
+          name: X-Employee-Id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/VacationRequest'
+        '401': { description: Unauthorized }
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+  schemas:
+    BalanceResponse:
+      type: object
+      properties:
+        hoursAvailable:
+          type: integer
+          minimum: 0
+          maximum: 120
+      required: [hoursAvailable]
+    CreateRequest:
+      type: object
+      properties:
+        employeeId: { type: string }
+        startDate: { type: string, format: date }
+        endDate: { type: string, format: date }
+      required: [employeeId, startDate, endDate]
+    RequestResponse:
+      type: object
+      properties:
+        id: { type: string }
+        status: { type: string, enum: [Pending, Approved, Declined] }
+        reason: { type: string, nullable: true }
+      required: [id, status]
+    VacationRequest:
+      type: object
+      properties:
+        id: { type: string }
+        employeeId: { type: string }
+        startDate: { type: string, format: date }
+        endDate: { type: string, format: date }
+        totalDays: { type: integer }
+        totalHours: { type: integer }
+        status: { type: string, enum: [Pending, Approved, Declined] }
+        reason: { type: string, nullable: true }
+      required: [id, employeeId, startDate, endDate, totalDays, totalHours, status]

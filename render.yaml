@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: vacation-mcp
+    env: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./Dockerfile
+    autoDeploy: true
+    healthCheckPath: /health
+    envVars:
+      - key: API_KEY
+        sync: false
