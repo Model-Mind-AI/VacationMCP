@@ -1,0 +1,13 @@
+**/.git
+**/.gitignore
+**/.env*
+**/__pycache__/
+**/*.pyc
+**/dist/
+**/build/
+**/.venv/
+**/venv/
+**/coverage/
+**/htmlcov/
+**/.vscode/
+**/.idea/
