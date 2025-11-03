@@ -300,50 +300,56 @@ async def mcp_root_post(request: Request):
     except Exception as e:
         # If no body or invalid JSON, return tools list (common for connection tests)
         logger.info("mcp_root_post called with empty/invalid body: %s", str(e))
-        return _get_tools_response()
+        # JSON-RPC parse error
+        return {
+            "jsonrpc": "2.0",
+            "error": {"code": -32700, "message": "Parse error"}
+        }
     
     logger.info("mcp_root_post called with request: %s", body)
     
     # Use the parsed body
     request_data = body if body else {}
     
-    # If empty body, return tools list
+    # If empty body, invalid request
     if not request_data:
-        return _get_tools_response()
+        return {
+            "jsonrpc": "2.0",
+            "error": {"code": -32600, "message": "Invalid Request"}
+        }
     
+    req_id = request_data.get("id")
+    method = request_data.get("method")
+
     # Check if this is an MCP protocol initialization or other message
-    if "method" in request_data:
-        method = request_data.get("method")
+    if method:
         params = request_data.get("params", {})
         
         # Handle MCP protocol methods
         if method == "tools/call":
-            return await call_tool({"name": params.get("name"), "arguments": params.get("arguments", {})})
+            result = await call_tool({"name": params.get("name"), "arguments": params.get("arguments", {})})
+            return {"jsonrpc": "2.0", "id": req_id, "result": result}
         elif method == "tools/list":
             # Return tools list in MCP protocol format
             tools_response = _get_tools_response()
-            # Wrap in MCP protocol response format
-            return {
-                "tools": tools_response.get("tools", [])
-            }
+            return {"jsonrpc": "2.0", "id": req_id, "result": {"tools": tools_response.get("tools", [])}}
         elif method == "initialize":
             # MCP initialization - return server capabilities
             return {
-                "protocolVersion": "2024-11-05",
-                "serverInfo": {
-                    "name": "vacation-mcp",
-                    "version": "1.0.0"
-                },
-                "capabilities": {
-                    "tools": {}
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "result": {
+                    "protocolVersion": "2024-11-05",
+                    "serverInfo": {"name": "vacation-mcp", "version": "1.0.0"},
+                    "capabilities": {"tools": {}}
                 }
             }
         else:
             logger.warning("Unknown MCP method: %s", method)
-            raise HTTPException(status_code=400, detail=f"Unknown MCP method: {method}")
+            return {"jsonrpc": "2.0", "id": req_id, "error": {"code": -32601, "message": f"Method not found: {method}"}}
     
-    # If no method field, assume it's a direct tool call
-    return await call_tool(request_data)
+    # If no method field, invalid JSON-RPC request
+    return {"jsonrpc": "2.0", "id": req_id, "error": {"code": -32600, "message": "Invalid Request"}}
 
 # Support non-slash path to avoid redirects from "/mcp" -> "/mcp/"
 @mcp_router.post("")
