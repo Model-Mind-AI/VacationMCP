@@ -30,23 +30,33 @@ app.add_middleware(
 
 @app.get("/mcp", include_in_schema=False)
 async def mcp_get_tools(_auth: None = Depends(require_api_key)):
-    """Handle GET /mcp - return tools list for OpenAI Agent Builder."""
+    """Handle GET /mcp - return tools list in OpenAI Agent Builder MCP format."""
     from src.mcp.mcp_endpoints import MCP_TOOLS
+    import uuid
     
-    # Convert to OpenAI Function Calling format
-    openai_tools = []
+    # Convert to OpenAI Agent Builder MCP format
+    mcp_tools = []
     for tool in MCP_TOOLS:
-        openai_tools.append({
-            "type": "function",
-            "function": {
-                "name": tool["name"],
-                "description": tool["description"],
-                "parameters": tool["inputSchema"]
-            }
+        # Ensure input_schema has the required JSON schema format
+        input_schema = tool["inputSchema"].copy()
+        if "$schema" not in input_schema:
+            input_schema["$schema"] = "https://json-schema.org/draft/2020-12/schema"
+        if "additionalProperties" not in input_schema:
+            input_schema["additionalProperties"] = False
+        
+        mcp_tools.append({
+            "name": tool["name"],
+            "description": tool["description"],
+            "input_schema": input_schema,
+            "annotations": None
         })
     
+    logger.info("mcp_get_tools endpoint called, returning %d tools", len(mcp_tools))
     return {
-        "tools": openai_tools
+        "id": f"mcpl_{uuid.uuid4().hex}",
+        "type": "mcp_list_tools",
+        "server_label": "vacation-mcp",
+        "tools": mcp_tools
     }
 
 @app.post("/mcp", include_in_schema=False)
