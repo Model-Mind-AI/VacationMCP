@@ -5,10 +5,10 @@ This guide explains how to deploy your VacationMCP service to Render and configu
 ## Architecture Overview
 
 Your VacationMCP service exposes:
-- **REST API endpoints** (`/balance`, `/vacation-requests`, etc.) - for direct API access
-- **MCP HTTP endpoints** (`/mcp/tools`, `/mcp/tools/call`) - for OpenAI Agent Builder integration
+- **REST API endpoints** (`/balance`, `/vacation-requests`, etc.) - for direct API access (requires OAuth2 Bearer token authentication)
+- **MCP HTTP endpoints** (`/mcp/tools`, `/mcp/tools/call`) - for OpenAI Agent Builder integration (public, no authentication required)
 
-Both use the same OAuth2 Bearer token authentication (`Authorization: Bearer <API_KEY>` header).
+**Note:** MCP endpoints are publicly accessible without authentication for easier integration with OpenAI Agent Builder.
 
 ---
 
@@ -55,9 +55,8 @@ $apiKey = "YOUR_API_KEY_HERE"
 # Test MCP health endpoint
 Invoke-RestMethod -Uri "$renderUrl/mcp/health" -Method GET
 
-# Test MCP tools listing
-$headers = @{ "Authorization" = "Bearer $apiKey" }
-Invoke-RestMethod -Uri "$renderUrl/mcp/tools" -Method GET -Headers $headers
+# Test MCP tools listing (no authentication required)
+Invoke-RestMethod -Uri "$renderUrl/mcp/tools" -Method GET
 ```
 
 Expected response from `/mcp/tools`:
@@ -92,11 +91,8 @@ Expected response from `/mcp/tools`:
 
 2. **Add your MCP server:**
    - **Server URL**: `https://your-vacation-mcp.onrender.com/mcp`
-   - **Authentication Method**: Select "Bearer Token" or "OAuth2"
-   - **Token**: Your `API_KEY` from Render environment variables
-   - **OR if using Custom Headers**: 
-     - Header Name: `Authorization`
-     - Header Value: `Bearer YOUR_API_KEY_HERE`
+   - **Authentication Method**: None (MCP endpoints are public)
+   - **No authentication required** - MCP endpoints work anonymously
 
 3. **Save the configuration**
 
@@ -194,19 +190,6 @@ from src.mcp.mcp_endpoints import mcp_router
 app.include_router(mcp_router)
 ```
 
-### Authentication Errors (401)
-
-**Check:**
-- API key in Agent Builder matches Render's `API_KEY`
-- Using OAuth2 Bearer token format: `Authorization: Bearer <API_KEY>`
-- Token is being sent correctly
-
-**Test manually:**
-```powershell
-$headers = @{ "Authorization" = "Bearer your_api_key" }
-Invoke-RestMethod -Uri "https://your-service.onrender.com/mcp/tools" -Headers $headers
-```
-
 ### Tools Not Discovered
 
 **Check:**
@@ -216,8 +199,7 @@ Invoke-RestMethod -Uri "https://your-service.onrender.com/mcp/tools" -Headers $h
 
 **Verify tools endpoint:**
 ```powershell
-$headers = @{ "Authorization" = "Bearer your_api_key" }
-$response = Invoke-RestMethod -Uri "https://your-service.onrender.com/mcp/tools" -Headers $headers
+$response = Invoke-RestMethod -Uri "https://your-service.onrender.com/mcp/tools" -Method GET
 $response | ConvertTo-Json -Depth 10
 ```
 
@@ -230,10 +212,7 @@ $response | ConvertTo-Json -Depth 10
 
 **Test tool call manually:**
 ```powershell
-$headers = @{
-    "Authorization" = "Bearer your_api_key"
-    "Content-Type" = "application/json"
-}
+$headers = @{ "Content-Type" = "application/json" }
 $body = @{
     name = "check_vacation_balance"
     arguments = @{
@@ -261,7 +240,7 @@ Health check for MCP endpoints (no auth required)
 ```
 
 ### GET `/mcp/tools`
-List available MCP tools (requires `Authorization: Bearer <API_KEY>` header)
+List available MCP tools (public endpoint, no authentication required)
 
 **Response:**
 ```json
@@ -278,7 +257,7 @@ List available MCP tools (requires `Authorization: Bearer <API_KEY>` header)
 ```
 
 ### POST `/mcp/tools/call`
-Call an MCP tool (requires `Authorization: Bearer <API_KEY>` header)
+Call an MCP tool (public endpoint, no authentication required)
 
 **Request:**
 ```json
@@ -319,10 +298,10 @@ Once configured:
 
 - **Render Service URL**: `https://your-service.onrender.com`
 - **MCP Base URL**: `https://your-service.onrender.com/mcp`
-- **API Key**: Set in Render environment variables
-- **Auth Header**: `Authorization: Bearer your_api_key` (OAuth2 Bearer token)
-- **Tools Endpoint**: `GET /mcp/tools`
-- **Call Endpoint**: `POST /mcp/tools/call`
+- **MCP Authentication**: None (public endpoints)
+- **REST API Authentication**: OAuth2 Bearer token (for `/balance`, `/vacation-requests`)
+- **Tools Endpoint**: `GET /mcp/tools` (public)
+- **Call Endpoint**: `POST /mcp/tools/call` (public)
 
 ---
 

@@ -1,6 +1,5 @@
 import logging
-from fastapi import APIRouter, Depends, HTTPException
-from src.middleware.auth import require_api_key
+from fastapi import APIRouter, HTTPException
 from src.mcp.tools import check_vacation_balance, request_vacation, list_vacation_requests
 
 logger = logging.getLogger("vacationmcp")
@@ -64,7 +63,7 @@ MCP_TOOLS = [
 
 
 @mcp_router.get("/tools")
-async def list_tools(_auth: None = Depends(require_api_key)):
+async def list_tools():
     """List available MCP tools in OpenAI Agent Builder format."""
     import uuid
     
@@ -96,10 +95,7 @@ async def list_tools(_auth: None = Depends(require_api_key)):
 
 
 @mcp_router.post("/tools/call")
-async def call_tool(
-    request: dict,
-    _auth: None = Depends(require_api_key)
-):
+async def call_tool(request: dict):
     """Handle MCP tool calls."""
     tool_name = request.get("name")
     arguments = request.get("arguments", {})
@@ -207,7 +203,7 @@ async def call_tool(
 
 
 @mcp_router.get("/")
-async def mcp_root(_auth: None = Depends(require_api_key)):
+async def mcp_root():
     """MCP root endpoint - return tools list in OpenAI Agent Builder format."""
     import uuid
     
@@ -237,11 +233,11 @@ async def mcp_root(_auth: None = Depends(require_api_key)):
     }
 
 @mcp_router.post("/")
-async def mcp_root_post(request: dict, _auth: None = Depends(require_api_key)):
+async def mcp_root_post(request: dict):
     """Handle POST /mcp/ - execute tool calls (for OpenAI Agent Builder with trailing slash)."""
     logger.info("mcp_root_post called with request: %s", request)
     # Reuse the same logic as /tools/call
-    return await call_tool(request, _auth)
+    return await call_tool(request)
 
 
 @mcp_router.get("/health")

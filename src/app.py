@@ -62,7 +62,7 @@ app.add_middleware(
 # This must be registered BEFORE the router to prevent FastAPI redirect
 
 @app.get("/mcp", include_in_schema=False)
-async def mcp_get_tools(_auth: None = Depends(require_api_key)):
+async def mcp_get_tools():
     """Handle GET /mcp - return tools list in OpenAI Agent Builder MCP format."""
     from src.mcp.mcp_endpoints import MCP_TOOLS
     import uuid
@@ -93,7 +93,7 @@ async def mcp_get_tools(_auth: None = Depends(require_api_key)):
     }
 
 @app.post("/mcp", include_in_schema=False)
-async def mcp_post_tool_call(request: dict, _auth: None = Depends(require_api_key)):
+async def mcp_post_tool_call(request: dict):
     """Handle POST /mcp - execute tool calls for OpenAI Agent Builder."""
     from src.mcp.tools import check_vacation_balance, request_vacation, list_vacation_requests
     
