@@ -286,6 +286,11 @@ async def mcp_root():
         "tools": mcp_tools
     }
 
+# Support non-slash path to avoid redirects from "/mcp" -> "/mcp/"
+@mcp_router.get("")
+async def mcp_root_noslash():
+    return await mcp_root()
+
 @mcp_router.post("/")
 async def mcp_root_post(request: Request):
     """Handle POST /mcp/ - execute tool calls or handle MCP protocol messages."""
@@ -339,6 +344,11 @@ async def mcp_root_post(request: Request):
     
     # If no method field, assume it's a direct tool call
     return await call_tool(request_data)
+
+# Support non-slash path to avoid redirects from "/mcp" -> "/mcp/"
+@mcp_router.post("")
+async def mcp_root_post_noslash(request: Request):
+    return await mcp_root_post(request)
 
 
 @mcp_router.get("/health")
