@@ -65,6 +65,15 @@ MCP_TOOLS = [
 @mcp_router.get("/tools")
 async def list_tools():
     """List available MCP tools in OpenAI Agent Builder format."""
+    return _get_tools_response()
+
+@mcp_router.post("/tools")
+async def list_tools_post(request: dict = None):
+    """Handle POST request to list tools (for MCP protocol)."""
+    return _get_tools_response()
+
+def _get_tools_response():
+    """Helper function to generate tools response in MCP format."""
     import uuid
     
     # Convert to OpenAI Agent Builder MCP format
@@ -90,15 +99,59 @@ async def list_tools():
         "server_label": "vacation-mcp",
         "tools": mcp_tools
     }
-    logger.info("list_tools endpoint called, returning %d tools", len(mcp_tools))
+    logger.info("list_tools called, returning %d tools", len(mcp_tools))
     return response
 
 
 @mcp_router.post("/tools/call")
 async def call_tool(request: dict):
     """Handle MCP tool calls."""
-    tool_name = request.get("name")
-    arguments = request.get("arguments", {})
+    logger.info("MCP tool call received: %s", request)
+    
+    # Handle different MCP request formats
+    # Format 1: Direct format { "name": "...", "arguments": {...} }
+    # Format 2: JSON-RPC format { "method": "tools/call", "params": { "name": "...", "arguments": {...} } }
+    # Format 3: OpenAI format { "name": "...", "arguments": {...} }
+    
+    tool_name = None
+    arguments = {}
+    
+    if "params" in request:
+        # JSON-RPC format
+        params = request.get("params", {})
+        tool_name = params.get("name")
+        arguments = params.get("arguments", {})
+    else:
+        # Direct format
+        # Support { "tool": { "name": "..." }, ... }
+        tool = request.get("tool")
+        if tool and isinstance(tool, dict):
+            tool_name = tool.get("name")
+            arguments = request.get("arguments", {}) or tool.get("arguments", {}) or {}
+        else:
+            tool_name = request.get("name")
+            # Some clients use "args" or "input" instead of "arguments"
+            arguments = (
+                request.get("arguments")
+                or request.get("args")
+                or request.get("input")
+                or {}
+            )
+    
+    logger.info("Extracted tool_name=%s, arguments=%s", tool_name, arguments)
+    
+    if not tool_name:
+        logger.warning("No tool name in request. Full request: %s", request)
+        # Return a helpful error response instead of raising exception
+        return {
+            "content": [
+                {
+                    "type": "text",
+                    "text": "Error: Missing 'name' field in request. Request format should be: {\"name\": \"tool_name\", \"arguments\": {...}}"
+                }
+            ],
+            "isError": True
+        }
     
     try:
         if tool_name == "check_vacation_balance":
@@ -234,9 +287,41 @@ async def mcp_root():
 
 @mcp_router.post("/")
 async def mcp_root_post(request: dict):
-    """Handle POST /mcp/ - execute tool calls (for OpenAI Agent Builder with trailing slash)."""
+    """Handle POST /mcp/ - execute tool calls or handle MCP protocol messages."""
     logger.info("mcp_root_post called with request: %s", request)
-    # Reuse the same logic as /tools/call
+    
+    # Check if this is an MCP protocol initialization or other message
+    if "method" in request:
+        method = request.get("method")
+        params = request.get("params", {})
+        
+        # Handle MCP protocol methods
+        if method == "tools/call":
+            return await call_tool({"name": params.get("name"), "arguments": params.get("arguments", {})})
+        elif method == "tools/list":
+            # Return tools list in MCP protocol format
+            tools_response = _get_tools_response()
+            # Wrap in MCP protocol response format
+            return {
+                "tools": tools_response.get("tools", [])
+            }
+        elif method == "initialize":
+            # MCP initialization - return server capabilities
+            return {
+                "protocolVersion": "2024-11-05",
+                "serverInfo": {
+                    "name": "vacation-mcp",
+                    "version": "1.0.0"
+                },
+                "capabilities": {
+                    "tools": {}
+                }
+            }
+        else:
+            logger.warning("Unknown MCP method: %s", method)
+            raise HTTPException(status_code=400, detail=f"Unknown MCP method: {method}")
+    
+    # If no method field, assume it's a direct tool call
     return await call_tool(request)
 
 
