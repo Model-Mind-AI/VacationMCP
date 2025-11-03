@@ -7,11 +7,15 @@ from src.middleware.auth import require_api_key
 from src.models.schemas import BalanceResponse, CreateRequest, RequestResponse, VacationRequest as VacationRequestModel
 from src.services.balance_service import BalanceService
 from src.services.request_service import RequestService
+from src.mcp.mcp_endpoints import mcp_router
 
 setup_logging()
 logger = logging.getLogger("vacationmcp")
 
 app = FastAPI(title="VacationMCP Service")
+
+# Include MCP router for OpenAI Agent Builder support
+app.include_router(mcp_router)
 
 
 @app.on_event("startup")
