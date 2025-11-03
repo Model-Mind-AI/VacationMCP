@@ -8,14 +8,13 @@ from src.middleware.auth import require_api_key, security
 from src.models.schemas import BalanceResponse, CreateRequest, RequestResponse, VacationRequest as VacationRequestModel
 from src.services.balance_service import BalanceService
 from src.services.request_service import RequestService
-from src.mcp.mcp_endpoints import mcp_router
 
 setup_logging()
 logger = logging.getLogger("vacationmcp")
 
 app = FastAPI(
     title="VacationMCP Service",
-    description="Vacation management service with MCP support",
+    description="Vacation management REST API service. For MCP protocol access, use the FastMCP server (mcp_server.py).",
     version="1.0.0"
 )
 
@@ -57,80 +56,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Add handlers for /mcp without trailing slash FIRST (to avoid 307 redirect)
-# OpenAI Agent Builder calls /mcp directly - GET for tools list, POST for tool execution
-# This must be registered BEFORE the router to prevent FastAPI redirect
-
-@app.get("/mcp", include_in_schema=False)
-async def mcp_get_tools():
-    """Handle GET /mcp - return tools list in OpenAI Agent Builder MCP format."""
-    from src.mcp.mcp_endpoints import MCP_TOOLS
-    import uuid
-    
-    # Convert to OpenAI Agent Builder MCP format
-    mcp_tools = []
-    for tool in MCP_TOOLS:
-        # Ensure input_schema has the required JSON schema format
-        input_schema = tool["inputSchema"].copy()
-        if "$schema" not in input_schema:
-            input_schema["$schema"] = "https://json-schema.org/draft/2020-12/schema"
-        if "additionalProperties" not in input_schema:
-            input_schema["additionalProperties"] = False
-        
-        mcp_tools.append({
-            "name": tool["name"],
-            "description": tool["description"],
-            "input_schema": input_schema,
-            "annotations": None
-        })
-    
-    logger.info("mcp_get_tools endpoint called, returning %d tools", len(mcp_tools))
-    return {
-        "id": f"mcpl_{uuid.uuid4().hex}",
-        "type": "mcp_list_tools",
-        "server_label": "vacation-mcp",
-        "tools": mcp_tools
-    }
-
-@app.post("/mcp", include_in_schema=False)
-async def mcp_post_tool_call(request: dict):
-    """Handle POST /mcp - execute tool calls or handle MCP protocol messages."""
-    from src.mcp.mcp_endpoints import call_tool, list_tools
-    
-    logger.info("mcp_post_tool_call received request: %s", request)
-    
-    # Check if this is an MCP protocol initialization or other message
-    if "method" in request:
-        method = request.get("method")
-        params = request.get("params", {})
-        
-        # Handle MCP protocol methods
-        if method == "tools/call":
-            return await call_tool({"name": params.get("name"), "arguments": params.get("arguments", {})})
-        elif method == "tools/list":
-            # Return tools list
-            return await list_tools()
-        elif method == "initialize":
-            # MCP initialization - return server capabilities
-            return {
-                "protocolVersion": "2024-11-05",
-                "serverInfo": {
-                    "name": "vacation-mcp",
-                    "version": "1.0.0"
-                },
-                "capabilities": {
-                    "tools": {}
-                }
-            }
-        else:
-            logger.warning("Unknown MCP method: %s", method)
-            raise HTTPException(status_code=400, detail=f"Unknown MCP method: {method}")
-    
-    # If no method field, assume it's a direct tool call
-    return await call_tool(request)
-
-# Include MCP router for OpenAI Agent Builder support
-app.include_router(mcp_router)
+# Note: MCP functionality is now handled by FastMCP server (mcp_server.py)
+# This FastAPI app provides REST API endpoints for direct HTTP access
 
 
 @app.on_event("startup")
