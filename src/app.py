@@ -24,6 +24,30 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Add handler for /mcp without trailing slash FIRST (to avoid 307 redirect)
+# OpenAI Agent Builder calls /mcp directly and expects tools list
+# This must be registered BEFORE the router to prevent FastAPI redirect
+@app.get("/mcp", include_in_schema=False)
+async def mcp_no_trailing_slash(_auth: None = Depends(require_api_key)):
+    """Handle /mcp without trailing slash - return tools list for OpenAI Agent Builder."""
+    from src.mcp.mcp_endpoints import MCP_TOOLS
+    
+    # Convert to OpenAI Function Calling format
+    openai_tools = []
+    for tool in MCP_TOOLS:
+        openai_tools.append({
+            "type": "function",
+            "function": {
+                "name": tool["name"],
+                "description": tool["description"],
+                "parameters": tool["inputSchema"]
+            }
+        })
+    
+    return {
+        "tools": openai_tools
+    }
+
 # Include MCP router for OpenAI Agent Builder support
 app.include_router(mcp_router)
 
