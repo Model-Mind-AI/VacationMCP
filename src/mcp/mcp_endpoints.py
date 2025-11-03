@@ -104,6 +104,24 @@ def _get_tools_response():
     return response
 
 
+def _get_mcp_tools_result():
+    """Generate tools list in MCP JSON-RPC expected format (inputSchema, annotations object)."""
+    tools = []
+    for tool in MCP_TOOLS:
+        input_schema = tool["inputSchema"].copy()
+        if "$schema" not in input_schema:
+            input_schema["$schema"] = "https://json-schema.org/draft/2020-12/schema"
+        if "additionalProperties" not in input_schema:
+            input_schema["additionalProperties"] = False
+        tools.append({
+            "name": tool["name"],
+            "description": tool["description"],
+            "inputSchema": input_schema,
+            "annotations": {}
+        })
+    return {"tools": tools}
+
+
 @mcp_router.post("/tools/call")
 async def call_tool(request: dict = Body(...)):
     """Handle MCP tool calls."""
@@ -330,9 +348,9 @@ async def mcp_root_post(request: Request):
             result = await call_tool({"name": params.get("name"), "arguments": params.get("arguments", {})})
             return {"jsonrpc": "2.0", "id": req_id, "result": result}
         elif method == "tools/list":
-            # Return tools list in MCP protocol format
-            tools_response = _get_tools_response()
-            return {"jsonrpc": "2.0", "id": req_id, "result": {"tools": tools_response.get("tools", [])}}
+            # Return tools list in MCP JSON-RPC expected format
+            tools_result = _get_mcp_tools_result()
+            return {"jsonrpc": "2.0", "id": req_id, "result": tools_result}
         elif method == "initialize":
             # MCP initialization - return server capabilities
             return {
