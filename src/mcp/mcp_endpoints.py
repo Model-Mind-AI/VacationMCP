@@ -208,6 +208,12 @@ async def mcp_root():
         }
     }
 
+@mcp_router.post("/")
+async def mcp_root_post(request: dict, _auth: None = Depends(require_api_key)):
+    """Handle POST /mcp/ - execute tool calls (for OpenAI Agent Builder with trailing slash)."""
+    # Reuse the same logic as /tools/call
+    return await call_tool(request, _auth)
+
 
 @mcp_router.get("/health")
 async def mcp_health():
