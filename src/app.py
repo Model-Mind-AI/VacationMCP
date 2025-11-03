@@ -8,15 +8,19 @@ from src.middleware.auth import require_api_key, security
 from src.models.schemas import BalanceResponse, CreateRequest, RequestResponse, VacationRequest as VacationRequestModel
 from src.services.balance_service import BalanceService
 from src.services.request_service import RequestService
+from src.mcp.mcp_endpoints import mcp_router
 
 setup_logging()
 logger = logging.getLogger("vacationmcp")
 
 app = FastAPI(
     title="VacationMCP Service",
-    description="Vacation management REST API service. For MCP protocol access, use the FastMCP server (mcp_server.py).",
+    description="Vacation management REST API service. For MCP protocol access, use the FastMCP server (mcp_server.py) or HTTP endpoints (/mcp/*).",
     version="1.0.0"
 )
+
+# Include MCP router - MCP endpoints are public (no authentication required)
+app.include_router(mcp_router)
 
 # Add OAuth2 security scheme to OpenAPI docs
 app.openapi_schema = None  # Force regeneration
@@ -56,8 +60,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Note: MCP functionality is now handled by FastMCP server (mcp_server.py)
-# This FastAPI app provides REST API endpoints for direct HTTP access
+# MCP endpoints are available via /mcp/* routes (no authentication required)
+# REST API endpoints below require OAuth2 Bearer token authentication
 
 
 @app.on_event("startup")
