@@ -2,6 +2,7 @@ import logging
 from typing import Optional
 from fastapi import APIRouter, HTTPException, Request, Body
 from src.mcp.tools import check_vacation_balance, request_vacation, list_vacation_requests
+from datetime import date, timedelta
 
 logger = logging.getLogger("vacationmcp")
 
@@ -172,6 +173,25 @@ async def call_tool(request: dict = Body(...)):
             "isError": True
         }
     
+    def _iso_from_natural(s: str) -> str:
+        v = (s or "").strip().lower()
+        if not v:
+            return v
+        today = date.today()
+        if v in ("today",):
+            d = today
+        elif v in ("tomorrow",):
+            d = today + timedelta(days=1)
+        else:
+            # assume ISO already
+            return s
+        # if weekend, roll to Monday
+        if d.weekday() == 5:
+            d = d + timedelta(days=2)
+        elif d.weekday() == 6:
+            d = d + timedelta(days=1)
+        return d.isoformat()
+
     try:
         if tool_name == "check_vacation_balance":
             employee_id = arguments.get("employee_id")
@@ -190,9 +210,25 @@ async def call_tool(request: dict = Body(...)):
             }
         
         elif tool_name == "request_vacation":
-            employee_id = arguments.get("employee_id")
-            start_date = arguments.get("start_date")
-            end_date = arguments.get("end_date")
+            employee_id = arguments.get("employee_id") or arguments.get("employeeId")
+            # accept snake_case and camelCase, and single day under "date" or "day"
+            start_date = (
+                arguments.get("start_date")
+                or arguments.get("startDate")
+                or arguments.get("date")
+                or arguments.get("day")
+            )
+            end_date = (
+                arguments.get("end_date")
+                or arguments.get("endDate")
+                or start_date
+            )
+
+            # support natural language like "tomorrow"
+            if start_date:
+                start_date = _iso_from_natural(start_date)
+            if end_date:
+                end_date = _iso_from_natural(end_date)
             
             if not all([employee_id, start_date, end_date]):
                 raise HTTPException(
