@@ -4,7 +4,7 @@ from fastapi import FastAPI, Depends, Header, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.lib.logging import setup_logging
-from src.middleware.auth import require_api_key
+from src.middleware.auth import require_api_key, security
 from src.models.schemas import BalanceResponse, CreateRequest, RequestResponse, VacationRequest as VacationRequestModel
 from src.services.balance_service import BalanceService
 from src.services.request_service import RequestService
@@ -13,7 +13,40 @@ from src.mcp.mcp_endpoints import mcp_router
 setup_logging()
 logger = logging.getLogger("vacationmcp")
 
-app = FastAPI(title="VacationMCP Service")
+app = FastAPI(
+    title="VacationMCP Service",
+    description="Vacation management service with MCP support",
+    version="1.0.0"
+)
+
+# Add OAuth2 security scheme to OpenAPI docs
+app.openapi_schema = None  # Force regeneration
+
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+    
+    from fastapi.openapi.utils import get_openapi
+    
+    openapi_schema = get_openapi(
+        title=app.title,
+        version=app.version,
+        description=app.description,
+        routes=app.routes,
+    )
+    # Add OAuth2 Bearer token security scheme
+    openapi_schema["components"]["securitySchemes"] = {
+        "BearerAuth": {
+            "type": "http",
+            "scheme": "bearer",
+            "bearerFormat": "API Key",
+            "description": "OAuth2 Bearer token authentication. Pass your API key as the Bearer token."
+        }
+    }
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+app.openapi = custom_openapi
 
 # Add CORS middleware for OpenAI Agent Builder
 app.add_middleware(

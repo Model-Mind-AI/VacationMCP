@@ -43,7 +43,7 @@ Check available vacation hours for an employee. The service comes with demo data
 $renderUrl = "https://vacation-mcp.onrender.com"
 $apiKey = "YOUR_API_KEY_HERE"
 $headers = @{
-    "X-API-Key" = $apiKey
+    "Authorization" = "Bearer $apiKey"
     "X-Employee-Id" = "alice"
 }
 Invoke-RestMethod -Uri "$renderUrl/balance" -Method GET -Headers $headers
@@ -51,7 +51,7 @@ Invoke-RestMethod -Uri "$renderUrl/balance" -Method GET -Headers $headers
 
 **curl:**
 ```bash
-curl -H "X-API-Key: YOUR_API_KEY_HERE" \
+curl -H "Authorization: Bearer YOUR_API_KEY_HERE" \
      -H "X-Employee-Id: alice" \
      https://vacation-mcp.onrender.com/balance
 ```
@@ -70,7 +70,7 @@ Submit a new vacation request. Dates should be in ISO format (YYYY-MM-DD).
 $renderUrl = "https://vacation-mcp.onrender.com"
 $apiKey = "YOUR_API_KEY_HERE"
 $headers = @{
-    "X-API-Key" = $apiKey
+    "Authorization" = "Bearer $apiKey"
     "Content-Type" = "application/json"
 }
 $body = @{
@@ -85,7 +85,7 @@ Invoke-RestMethod -Uri "$renderUrl/vacation-requests" -Method POST -Headers $hea
 **curl:**
 ```bash
 curl -X POST https://vacation-mcp.onrender.com/vacation-requests \
-  -H "X-API-Key: YOUR_API_KEY_HERE" \
+  -H "Authorization: Bearer YOUR_API_KEY_HERE" \
   -H "Content-Type: application/json" \
   -d '{
     "employeeId": "alice",
@@ -112,7 +112,7 @@ Get all vacation requests for an employee.
 $renderUrl = "https://vacation-mcp.onrender.com"
 $apiKey = "YOUR_API_KEY_HERE"
 $headers = @{
-    "X-API-Key" = $apiKey
+    "Authorization" = "Bearer $apiKey"
     "X-Employee-Id" = "alice"
 }
 Invoke-RestMethod -Uri "$renderUrl/vacation-requests" -Method GET -Headers $headers
@@ -120,7 +120,7 @@ Invoke-RestMethod -Uri "$renderUrl/vacation-requests" -Method GET -Headers $head
 
 **curl:**
 ```bash
-curl -H "X-API-Key: YOUR_API_KEY_HERE" \
+curl -H "Authorization: Bearer YOUR_API_KEY_HERE" \
      -H "X-Employee-Id: alice" \
      https://vacation-mcp.onrender.com/vacation-requests
 ```
@@ -164,7 +164,7 @@ try {
 Write-Host "`n=== Testing Get Balance ===" -ForegroundColor Green
 try {
     $headers = @{
-        "X-API-Key" = $apiKey
+        "Authorization" = "Bearer $apiKey"
         "X-Employee-Id" = $employeeId
     }
     $response = Invoke-RestMethod -Uri "$renderUrl/balance" -Method GET -Headers $headers
@@ -177,7 +177,7 @@ try {
 Write-Host "`n=== Testing Create Vacation Request ===" -ForegroundColor Green
 try {
     $headers = @{
-        "X-API-Key" = $apiKey
+        "Authorization" = "Bearer $apiKey"
         "Content-Type" = "application/json"
     }
     $body = @{
@@ -196,7 +196,7 @@ try {
 Write-Host "`n=== Testing List Vacation Requests ===" -ForegroundColor Green
 try {
     $headers = @{
-        "X-API-Key" = $apiKey
+        "Authorization" = "Bearer $apiKey"
         "X-Employee-Id" = $employeeId
     }
     $response = Invoke-RestMethod -Uri "$renderUrl/vacation-requests" -Method GET -Headers $headers
@@ -219,7 +219,7 @@ RENDER_URL = "https://vacation-mcp.onrender.com"
 API_KEY = "YOUR_API_KEY_HERE"
 EMPLOYEE_ID = "alice"
 
-headers = {"X-API-Key": API_KEY}
+headers = {"Authorization": f"Bearer {API_KEY}"}
 
 # Health check
 print("=== Health Check ===")
@@ -258,13 +258,17 @@ print(response.json())
 
 ## Common Issues
 
-1. **401 Unauthorized**: Make sure your `API_KEY` environment variable is set correctly in Render and matches the value you're sending in the `X-API-Key` header.
+1. **401 Unauthorized**: Make sure your `API_KEY` environment variable is set correctly in Render and matches the value you're sending in the `Authorization: Bearer <API_KEY>` header.
 
 2. **400 Bad Request**: 
    - Ensure dates are in ISO format (YYYY-MM-DD)
    - Check that required headers (`X-Employee-Id`) are present
 
-3. **429 Too Many Requests**: The service has rate limiting (60 requests per 60 seconds per API key). Wait a minute and try again.
+3. **401 Unauthorized**: 
+   - Ensure you're using `Authorization: Bearer <API_KEY>` header format
+   - Verify the API key matches your Render environment variable
+
+4. **429 Too Many Requests**: The service has rate limiting (60 requests per 60 seconds per API key). Wait a minute and try again.
 
 4. **Service not responding**: Check the Render dashboard for service status and logs.
 

@@ -8,7 +8,7 @@ Your VacationMCP service exposes:
 - **REST API endpoints** (`/balance`, `/vacation-requests`, etc.) - for direct API access
 - **MCP HTTP endpoints** (`/mcp/tools`, `/mcp/tools/call`) - for OpenAI Agent Builder integration
 
-Both use the same API key authentication (`X-API-Key` header).
+Both use the same OAuth2 Bearer token authentication (`Authorization: Bearer <API_KEY>` header).
 
 ---
 
@@ -56,7 +56,7 @@ $apiKey = "YOUR_API_KEY_HERE"
 Invoke-RestMethod -Uri "$renderUrl/mcp/health" -Method GET
 
 # Test MCP tools listing
-$headers = @{ "X-API-Key" = $apiKey }
+$headers = @{ "Authorization" = "Bearer $apiKey" }
 Invoke-RestMethod -Uri "$renderUrl/mcp/tools" -Method GET -Headers $headers
 ```
 
@@ -92,9 +92,11 @@ Expected response from `/mcp/tools`:
 
 2. **Add your MCP server:**
    - **Server URL**: `https://your-vacation-mcp.onrender.com/mcp`
-   - **Authentication Method**: Select "API Key" or "Custom Headers"
-   - **API Key / Header Name**: `X-API-Key`
-   - **API Key Value**: Your `API_KEY` from Render environment variables
+   - **Authentication Method**: Select "Bearer Token" or "OAuth2"
+   - **Token**: Your `API_KEY` from Render environment variables
+   - **OR if using Custom Headers**: 
+     - Header Name: `Authorization`
+     - Header Value: `Bearer YOUR_API_KEY_HERE`
 
 3. **Save the configuration**
 
@@ -162,7 +164,7 @@ If Agent Builder supports OpenAI Function Calling format, you can create a custo
 2. **Configure action/fetch URL:**
    - URL: `https://your-vacation-mcp.onrender.com/balance`
    - Method: `GET`
-   - Headers: `X-API-Key: YOUR_API_KEY`, `X-Employee-Id: {employee_id}`
+   - Headers: `Authorization: Bearer YOUR_API_KEY`, `X-Employee-Id: {employee_id}`
 
 3. **Repeat for other endpoints**
 
@@ -196,12 +198,12 @@ app.include_router(mcp_router)
 
 **Check:**
 - API key in Agent Builder matches Render's `API_KEY`
-- Header name is exactly `X-API-Key` (case-sensitive)
-- API key is being sent correctly
+- Using OAuth2 Bearer token format: `Authorization: Bearer <API_KEY>`
+- Token is being sent correctly
 
 **Test manually:**
 ```powershell
-$headers = @{ "X-API-Key" = "your_api_key" }
+$headers = @{ "Authorization" = "Bearer your_api_key" }
 Invoke-RestMethod -Uri "https://your-service.onrender.com/mcp/tools" -Headers $headers
 ```
 
@@ -214,7 +216,7 @@ Invoke-RestMethod -Uri "https://your-service.onrender.com/mcp/tools" -Headers $h
 
 **Verify tools endpoint:**
 ```powershell
-$headers = @{ "X-API-Key" = "your_api_key" }
+$headers = @{ "Authorization" = "Bearer your_api_key" }
 $response = Invoke-RestMethod -Uri "https://your-service.onrender.com/mcp/tools" -Headers $headers
 $response | ConvertTo-Json -Depth 10
 ```
@@ -229,7 +231,7 @@ $response | ConvertTo-Json -Depth 10
 **Test tool call manually:**
 ```powershell
 $headers = @{
-    "X-API-Key" = "your_api_key"
+    "Authorization" = "Bearer your_api_key"
     "Content-Type" = "application/json"
 }
 $body = @{
@@ -259,7 +261,7 @@ Health check for MCP endpoints (no auth required)
 ```
 
 ### GET `/mcp/tools`
-List available MCP tools (requires `X-API-Key` header)
+List available MCP tools (requires `Authorization: Bearer <API_KEY>` header)
 
 **Response:**
 ```json
@@ -276,7 +278,7 @@ List available MCP tools (requires `X-API-Key` header)
 ```
 
 ### POST `/mcp/tools/call`
-Call an MCP tool (requires `X-API-Key` header)
+Call an MCP tool (requires `Authorization: Bearer <API_KEY>` header)
 
 **Request:**
 ```json
@@ -318,7 +320,7 @@ Once configured:
 - **Render Service URL**: `https://your-service.onrender.com`
 - **MCP Base URL**: `https://your-service.onrender.com/mcp`
 - **API Key**: Set in Render environment variables
-- **Auth Header**: `X-API-Key: your_api_key`
+- **Auth Header**: `Authorization: Bearer your_api_key` (OAuth2 Bearer token)
 - **Tools Endpoint**: `GET /mcp/tools`
 - **Call Endpoint**: `POST /mcp/tools/call`
 

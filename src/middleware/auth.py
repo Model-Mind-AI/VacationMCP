@@ -2,10 +2,13 @@ import os
 import time
 from collections import defaultdict, deque
 from typing import Deque, DefaultDict
-from fastapi import Header, HTTPException, status
+from fastapi import HTTPException, status, Security
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 API_KEY_ENV = "API_KEY"
-API_KEY_HEADER = "X-API-Key"
+
+# OAuth2 Bearer token security scheme
+security = HTTPBearer()
 
 # naive in-memory rate limiter: 60 requests per 60 seconds per API key
 _WINDOW_SECONDS = 60
@@ -24,8 +27,19 @@ def _check_rate_limit(key: str) -> None:
     q.append(now)
 
 
-def require_api_key(x_api_key: str | None = Header(default=None, alias=API_KEY_HEADER)) -> None:
+def require_api_key(credentials: HTTPAuthorizationCredentials = Security(security)) -> None:
+    """
+    OAuth2 Bearer token authentication.
+    Expects Authorization header: 'Bearer <API_KEY>'
+    The API key is passed as the Bearer token.
+    """
+    token = credentials.credentials
     expected = os.getenv(API_KEY_ENV)
-    if not expected or x_api_key != expected:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
-    _check_rate_limit(x_api_key)
+    
+    if not expected or token != expected:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    _check_rate_limit(token)
