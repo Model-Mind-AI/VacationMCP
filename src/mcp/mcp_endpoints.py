@@ -85,12 +85,14 @@ async def list_tools(_auth: None = Depends(require_api_key)):
             "annotations": None
         })
     
-    return {
+    response = {
         "id": f"mcpl_{uuid.uuid4().hex}",
         "type": "mcp_list_tools",
         "server_label": "vacation-mcp",
         "tools": mcp_tools
     }
+    logger.info("list_tools endpoint called, returning %d tools", len(mcp_tools))
+    return response
 
 
 @mcp_router.post("/tools/call")
@@ -237,6 +239,7 @@ async def mcp_root(_auth: None = Depends(require_api_key)):
 @mcp_router.post("/")
 async def mcp_root_post(request: dict, _auth: None = Depends(require_api_key)):
     """Handle POST /mcp/ - execute tool calls (for OpenAI Agent Builder with trailing slash)."""
+    logger.info("mcp_root_post called with request: %s", request)
     # Reuse the same logic as /tools/call
     return await call_tool(request, _auth)
 

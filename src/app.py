@@ -63,9 +63,8 @@ async def mcp_get_tools(_auth: None = Depends(require_api_key)):
 async def mcp_post_tool_call(request: dict, _auth: None = Depends(require_api_key)):
     """Handle POST /mcp - execute tool calls for OpenAI Agent Builder."""
     from src.mcp.tools import check_vacation_balance, request_vacation, list_vacation_requests
-    import logging
     
-    logger = logging.getLogger("vacationmcp")
+    logger.info("mcp_post_tool_call received request: %s", request)
     tool_name = request.get("name")
     arguments = request.get("arguments", {})
     
