@@ -1,6 +1,7 @@
 import logging
 from typing import List
 from fastapi import FastAPI, Depends, Header, HTTPException, status
+from fastapi.middleware.cors import CORSMiddleware
 
 from src.lib.logging import setup_logging
 from src.middleware.auth import require_api_key
@@ -13,6 +14,15 @@ setup_logging()
 logger = logging.getLogger("vacationmcp")
 
 app = FastAPI(title="VacationMCP Service")
+
+# Add CORS middleware for OpenAI Agent Builder
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # In production, specify OpenAI domains
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Include MCP router for OpenAI Agent Builder support
 app.include_router(mcp_router)

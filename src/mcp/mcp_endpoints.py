@@ -8,7 +8,7 @@ logger = logging.getLogger("vacationmcp")
 # Create MCP router
 mcp_router = APIRouter(prefix="/mcp", tags=["MCP"])
 
-# MCP tools registry
+# MCP tools registry (stored in OpenAI Function Calling format compatible structure)
 MCP_TOOLS = [
     {
         "name": "check_vacation_balance",
@@ -65,9 +65,21 @@ MCP_TOOLS = [
 
 @mcp_router.get("/tools")
 async def list_tools(_auth: None = Depends(require_api_key)):
-    """List available MCP tools."""
+    """List available MCP tools in OpenAI Function Calling format."""
+    # Convert MCP tools to OpenAI Function Calling format
+    openai_tools = []
+    for tool in MCP_TOOLS:
+        openai_tools.append({
+            "type": "function",
+            "function": {
+                "name": tool["name"],
+                "description": tool["description"],
+                "parameters": tool["inputSchema"]  # OpenAI uses "parameters" instead of "inputSchema"
+            }
+        })
+    
     return {
-        "tools": MCP_TOOLS
+        "tools": openai_tools
     }
 
 
@@ -180,6 +192,21 @@ async def call_tool(
             ],
             "isError": True
         }
+
+
+@mcp_router.get("/")
+async def mcp_root():
+    """MCP root endpoint - provides server info."""
+    return {
+        "status": "ok",
+        "protocol": "mcp",
+        "version": "1.0",
+        "endpoints": {
+            "tools": "/mcp/tools",
+            "call": "/mcp/tools/call",
+            "health": "/mcp/health"
+        }
+    }
 
 
 @mcp_router.get("/health")
