@@ -1,5 +1,6 @@
 import logging
-from fastapi import APIRouter, HTTPException
+from typing import Optional
+from fastapi import APIRouter, HTTPException, Request, Body
 from src.mcp.tools import check_vacation_balance, request_vacation, list_vacation_requests
 
 logger = logging.getLogger("vacationmcp")
@@ -68,7 +69,7 @@ async def list_tools():
     return _get_tools_response()
 
 @mcp_router.post("/tools")
-async def list_tools_post(request: dict = None):
+async def list_tools_post(request: Optional[dict] = Body(None)):
     """Handle POST request to list tools (for MCP protocol)."""
     return _get_tools_response()
 
@@ -104,7 +105,7 @@ def _get_tools_response():
 
 
 @mcp_router.post("/tools/call")
-async def call_tool(request: dict):
+async def call_tool(request: dict = Body(...)):
     """Handle MCP tool calls."""
     logger.info("MCP tool call received: %s", request)
     
@@ -286,14 +287,29 @@ async def mcp_root():
     }
 
 @mcp_router.post("/")
-async def mcp_root_post(request: dict):
+async def mcp_root_post(request: Request):
     """Handle POST /mcp/ - execute tool calls or handle MCP protocol messages."""
-    logger.info("mcp_root_post called with request: %s", request)
+    try:
+        # Parse JSON body, handling empty body gracefully
+        body = await request.json()
+    except Exception as e:
+        # If no body or invalid JSON, return tools list (common for connection tests)
+        logger.info("mcp_root_post called with empty/invalid body: %s", str(e))
+        return _get_tools_response()
+    
+    logger.info("mcp_root_post called with request: %s", body)
+    
+    # Use the parsed body
+    request_data = body if body else {}
+    
+    # If empty body, return tools list
+    if not request_data:
+        return _get_tools_response()
     
     # Check if this is an MCP protocol initialization or other message
-    if "method" in request:
-        method = request.get("method")
-        params = request.get("params", {})
+    if "method" in request_data:
+        method = request_data.get("method")
+        params = request_data.get("params", {})
         
         # Handle MCP protocol methods
         if method == "tools/call":
@@ -322,7 +338,7 @@ async def mcp_root_post(request: dict):
             raise HTTPException(status_code=400, detail=f"Unknown MCP method: {method}")
     
     # If no method field, assume it's a direct tool call
-    return await call_tool(request)
+    return await call_tool(request_data)
 
 
 @mcp_router.get("/health")
